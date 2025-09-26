@@ -10,8 +10,8 @@ const Index = () => {
       <div className="container mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold gradient-text mb-2">AI Girlfriend Dashboard</h1>
-          <p className="text-muted-foreground">Your personal companion interface</p>
+          <h1 className="text-4xl font-bold gradient-text mb-2">AI Companion Dashboard</h1>
+          <p className="text-muted-foreground">Your friendly companion interface</p>
         </div>
 
         {/* Main Content */}

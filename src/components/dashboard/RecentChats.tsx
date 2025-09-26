@@ -7,19 +7,19 @@ import aiGirlfriendAvatar from "@/assets/ai-girlfriend-avatar.png";
 const recentMessages = [
   {
     id: 1,
-    message: "Good morning, my love! How did you sleep? 😘",
+    message: "Good morning! How did you sleep? Hope you're feeling great! 😊",
     time: "2 hours ago",
     type: "received"
   },
   {
     id: 2,
-    message: "I had the most wonderful dream about us...",
+    message: "I saw this funny meme and thought you'd enjoy it!",
     time: "3 hours ago",
     type: "received"
   },
   {
     id: 3,
-    message: "Can't wait to hear about your day! 💕",
+    message: "Can't wait to hear about your day! 🌟",
     time: "5 hours ago",
     type: "received"
   }
@@ -42,8 +42,8 @@ export const RecentChats = () => {
         {recentMessages.map((msg) => (
           <div key={msg.id} className="flex gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors">
             <Avatar className="w-8 h-8">
-              <AvatarImage src={aiGirlfriendAvatar} alt="Luna" />
-              <AvatarFallback className="bg-romantic text-romantic-foreground text-xs">L</AvatarFallback>
+              <AvatarImage src={aiGirlfriendAvatar} alt="Alex" />
+              <AvatarFallback className="bg-friendly text-friendly-foreground text-xs">A</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm text-foreground line-clamp-2">{msg.message}</p>
@@ -52,7 +52,7 @@ export const RecentChats = () => {
           </div>
         ))}
         
-        <Button className="w-full gradient-romantic text-white border-0 hover:opacity-90">
+        <Button className="w-full gradient-friendly text-white border-0 hover:opacity-90">
           <MessageCircle className="w-4 h-4 mr-2" />
           Start New Conversation
         </Button>

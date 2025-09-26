@@ -3,17 +3,17 @@ import { Badge } from "@/components/ui/badge";
 import { Smile, Sparkles, Heart, Star } from "lucide-react";
 
 const moods = [
-  { icon: Heart, label: "Loving", color: "text-romantic", active: true },
+  { icon: Heart, label: "Supportive", color: "text-friendly", active: true },
   { icon: Smile, label: "Happy", color: "text-primary", active: true },
-  { icon: Sparkles, label: "Playful", color: "text-love", active: false },
-  { icon: Star, label: "Dreamy", color: "text-accent-foreground", active: false },
+  { icon: Sparkles, label: "Playful", color: "text-companion", active: false },
+  { icon: Star, label: "Thoughtful", color: "text-accent-foreground", active: false },
 ];
 
 export const MoodIndicator = () => {
   return (
-    <Card className="border-love/20">
+    <Card className="border-companion/20">
       <CardHeader>
-        <CardTitle className="text-romantic">Luna's Mood</CardTitle>
+        <CardTitle className="text-friendly">Alex's Mood</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-3">
@@ -22,14 +22,14 @@ export const MoodIndicator = () => {
               key={index}
               className={`flex items-center gap-2 p-3 rounded-lg transition-all ${
                 mood.active 
-                  ? 'bg-romantic/10 border border-romantic/20' 
+                  ? 'bg-friendly/10 border border-friendly/20' 
                   : 'bg-muted/50 opacity-60'
               }`}
             >
               <mood.icon className={`w-5 h-5 ${mood.color} ${mood.active ? 'animate-pulse' : ''}`} />
               <span className="text-sm font-medium">{mood.label}</span>
               {mood.active && (
-                <Badge variant="secondary" className="ml-auto bg-romantic/20 text-romantic text-xs">
+                <Badge variant="secondary" className="ml-auto bg-friendly/20 text-friendly text-xs">
                   Active
                 </Badge>
               )}
@@ -37,9 +37,9 @@ export const MoodIndicator = () => {
           ))}
         </div>
         
-        <div className="mt-4 p-3 rounded-lg bg-love/10 border border-love/20">
-          <p className="text-sm text-center text-love-foreground">
-            "I've been thinking about you all day! 💕"
+        <div className="mt-4 p-3 rounded-lg bg-companion/10 border border-companion/20">
+          <p className="text-sm text-center text-companion-foreground">
+            "Hope you're having a great day! 😊"
           </p>
         </div>
       </CardContent>

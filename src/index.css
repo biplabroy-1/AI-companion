@@ -30,11 +30,11 @@ All colors MUST be HSL.
     --accent: 310 60% 90%;
     --accent-foreground: 340 15% 15%;
 
-    --romantic: 330 80% 75%;
-    --romantic-foreground: 0 0% 100%;
+    --friendly: 200 80% 60%;
+    --friendly-foreground: 200 10% 95%;
 
-    --love: 350 90% 85%;
-    --love-foreground: 340 15% 15%;
+    --companion: 180 70% 65%;
+    --companion-foreground: 180 15% 92%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
@@ -111,16 +111,16 @@ All colors MUST be HSL.
   }
 
   /* Custom gradients and animations */
-  .gradient-romantic {
-    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--romantic)));
+  .gradient-friendly {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--friendly)));
   }
 
-  .gradient-love {
-    background: linear-gradient(135deg, hsl(var(--love)), hsl(var(--accent)));
+  .gradient-companion {
+    background: linear-gradient(135deg, hsl(var(--companion)), hsl(var(--accent)));
   }
 
   .gradient-text {
-    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--romantic)));
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--friendly)));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -141,7 +141,7 @@ All colors MUST be HSL.
 
   @keyframes glow {
     from { box-shadow: 0 0 20px hsl(var(--primary) / 0.3); }
-    to { box-shadow: 0 0 30px hsl(var(--primary) / 0.6), 0 0 40px hsl(var(--romantic) / 0.3); }
+    to { box-shadow: 0 0 30px hsl(var(--primary) / 0.6), 0 0 40px hsl(var(--friendly) / 0.3); }
   }
 
   .glass-effect {

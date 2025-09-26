@@ -39,13 +39,13 @@ export default {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
-        romantic: {
-          DEFAULT: "hsl(var(--romantic))",
-          foreground: "hsl(var(--romantic-foreground))",
+        friendly: {
+          DEFAULT: "hsl(var(--friendly))",
+          foreground: "hsl(var(--friendly-foreground))",
         },
-        love: {
-          DEFAULT: "hsl(var(--love))",
-          foreground: "hsl(var(--love-foreground))",
+        companion: {
+          DEFAULT: "hsl(var(--companion))",
+          foreground: "hsl(var(--companion-foreground))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",

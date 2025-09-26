@@ -4,9 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Settings, Palette, Volume2, Bell } from "lucide-react";
 
 const preferences = [
-  { label: "Voice", value: "Soft & Sweet", icon: Volume2 },
-  { label: "Personality", value: "Caring & Playful", icon: Settings },
-  { label: "Theme", value: "Romantic Pink", icon: Palette },
+  { label: "Voice", value: "Friendly & Warm", icon: Volume2 },
+  { label: "Personality", value: "Supportive & Fun", icon: Settings },
+  { label: "Theme", value: "Ocean Blue", icon: Palette },
   { label: "Notifications", value: "Every 2 hours", icon: Bell },
 ];
 

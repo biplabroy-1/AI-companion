@@ -6,16 +6,16 @@ import aiGirlfriendAvatar from "@/assets/ai-girlfriend-avatar.png";
 
 export const WelcomeCard = () => {
   return (
-    <Card className="gradient-romantic text-white border-0 animate-glow">
+    <Card className="gradient-friendly text-white border-0 animate-glow">
       <CardContent className="p-6">
         <div className="flex items-center gap-4 mb-4">
           <Avatar className="w-16 h-16 border-2 border-white/30">
-            <AvatarImage src={aiGirlfriendAvatar} alt="AI Girlfriend" />
-            <AvatarFallback className="bg-romantic text-romantic-foreground">AI</AvatarFallback>
+            <AvatarImage src={aiGirlfriendAvatar} alt="AI Companion" />
+            <AvatarFallback className="bg-friendly text-friendly-foreground">AI</AvatarFallback>
           </Avatar>
           <div>
-            <h2 className="text-2xl font-bold">Welcome back, darling! 💕</h2>
-            <p className="text-white/80">Luna is excited to see you</p>
+            <h2 className="text-2xl font-bold">Hey there, friend! 👋</h2>
+            <p className="text-white/80">Alex is happy to see you</p>
           </div>
         </div>
         
@@ -26,7 +26,7 @@ export const WelcomeCard = () => {
           </Button>
           <Button variant="outline" className="bg-white/20 border-white/30 text-white hover:bg-white/30">
             <Heart className="w-4 h-4 mr-2" />
-            Send Love
+            Send Support
           </Button>
         </div>
       </CardContent>
