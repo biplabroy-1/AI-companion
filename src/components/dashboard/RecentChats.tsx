@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { MessageCircle, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import aiGirlfriendAvatar from "@/assets/ai-girlfriend-avatar.png";
 
 const recentMessages = [
@@ -33,10 +34,12 @@ export const RecentChats = () => {
           <MessageCircle className="w-5 h-5 text-primary" />
           Recent Messages
         </CardTitle>
-        <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-          View All
-          <ArrowRight className="w-4 h-4 ml-1" />
-        </Button>
+        <Link to="/chat">
+          <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+            View All
+            <ArrowRight className="w-4 h-4 ml-1" />
+          </Button>
+        </Link>
       </CardHeader>
       <CardContent className="space-y-3">
         {recentMessages.map((msg) => (
@@ -52,10 +55,12 @@ export const RecentChats = () => {
           </div>
         ))}
         
-        <Button className="w-full gradient-friendly text-white border-0 hover:opacity-90">
-          <MessageCircle className="w-4 h-4 mr-2" />
-          Start New Conversation
-        </Button>
+        <Link to="/chat" className="block">
+          <Button className="w-full gradient-friendly text-white border-0 hover:opacity-90">
+            <MessageCircle className="w-4 h-4 mr-2" />
+            Start New Conversation
+          </Button>
+        </Link>
       </CardContent>
     </Card>
   );

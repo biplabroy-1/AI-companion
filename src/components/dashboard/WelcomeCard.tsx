@@ -2,6 +2,7 @@ import { Heart, MessageCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Link } from "react-router-dom";
 import aiGirlfriendAvatar from "@/assets/ai-girlfriend-avatar.png";
 
 export const WelcomeCard = () => {
@@ -20,10 +21,12 @@ export const WelcomeCard = () => {
         </div>
         
         <div className="flex gap-3">
-          <Button variant="outline" className="bg-white/20 border-white/30 text-white hover:bg-white/30">
-            <MessageCircle className="w-4 h-4 mr-2" />
-            Chat Now
-          </Button>
+          <Link to="/chat">
+            <Button variant="outline" className="bg-white/20 border-white/30 text-white hover:bg-white/30">
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Chat Now
+            </Button>
+          </Link>
           <Button variant="outline" className="bg-white/20 border-white/30 text-white hover:bg-white/30">
             <Heart className="w-4 h-4 mr-2" />
             Send Support
