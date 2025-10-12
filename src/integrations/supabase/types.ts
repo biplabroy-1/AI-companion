@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      companion_config: {
+        Row: {
+          companion_name: string
+          created_at: string
+          id: string
+          personality: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          companion_name?: string
+          created_at?: string
+          id?: string
+          personality?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          companion_name?: string
+          created_at?: string
+          id?: string
+          personality?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "companion_config_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           created_at: string
@@ -69,6 +104,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {

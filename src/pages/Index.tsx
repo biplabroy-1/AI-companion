@@ -1,3 +1,6 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { MoodIndicator } from "@/components/dashboard/MoodIndicator";
@@ -5,6 +8,16 @@ import { RecentChats } from "@/components/dashboard/RecentChats";
 import { PersonalizationCard } from "@/components/dashboard/PersonalizationCard";
 
 const Index = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) {
+        navigate("/auth");
+      }
+    });
+  }, [navigate]);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 space-y-6">

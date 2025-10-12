@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -22,8 +23,12 @@ const Chat = () => {
   const [inputValue, setInputValue] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+  const [companionName, setCompanionName] = useState("Alex");
+  const [personality, setPersonality] = useState("friendly, supportive, and engaging");
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -38,13 +43,20 @@ const Chat = () => {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
-          toast({
-            title: "Authentication Required",
-            description: "Please log in to use the chat feature.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
+          navigate("/auth");
           return;
+        }
+
+        // Get companion config
+        const { data: config } = await supabase
+          .from('companion_config')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (config) {
+          setCompanionName(config.companion_name);
+          setPersonality(config.personality);
         }
 
         // Get or create conversation
@@ -65,7 +77,7 @@ const Chat = () => {
           // Create new conversation
           const { data: newConv, error: createError } = await supabase
             .from('conversations')
-            .insert([{ user_id: user.id, title: 'Chat with Alex' }])
+            .insert([{ user_id: user.id, title: `Chat with ${companionName}` }])
             .select()
             .single();
 
@@ -106,13 +118,14 @@ const Chat = () => {
     };
 
     initializeConversation();
-  }, [toast]);
+  }, [toast, navigate, companionName]);
 
   const handleSend = async () => {
-    if (!inputValue.trim() || !conversationId) return;
+    if (!inputValue.trim() || !conversationId || isSending) return;
 
     const userContent = inputValue;
     setInputValue("");
+    setIsSending(true);
 
     try {
       // Save user message
@@ -130,22 +143,127 @@ const Chat = () => {
 
       setMessages((prev) => [...prev, userMsg as Message]);
 
-      // Simulate AI response after a delay
-      setTimeout(async () => {
-        const { data: aiMsg, error: aiError } = await supabase
+      // Stream AI response
+      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+      const chatMessages = messages.map(m => ({
+        role: m.sender === "user" ? "user" : "assistant",
+        content: m.content
+      }));
+      chatMessages.push({ role: "user", content: userContent });
+
+      const resp = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ 
+          messages: chatMessages,
+          companionName,
+          personality
+        }),
+      });
+
+      if (!resp.ok) {
+        if (resp.status === 429) {
+          toast({
+            title: "Rate limit exceeded",
+            description: "Please try again in a moment.",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (resp.status === 402) {
+          toast({
+            title: "Payment required",
+            description: "Please add funds to your Lovable AI workspace.",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw new Error("Failed to start stream");
+      }
+
+      if (!resp.body) throw new Error("No response body");
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+      let streamDone = false;
+      let assistantContent = "";
+      let tempAiMsgId: string | null = null;
+
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") {
+            streamDone = true;
+            break;
+          }
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              assistantContent += content;
+              
+              // Update UI with streaming content
+              setMessages((prev) => {
+                const last = prev[prev.length - 1];
+                if (last?.id === tempAiMsgId) {
+                  return prev.map((m) => 
+                    m.id === tempAiMsgId ? { ...m, content: assistantContent } : m
+                  );
+                }
+                // Create temporary message
+                const tempMsg: Message = {
+                  id: `temp-${Date.now()}`,
+                  content: assistantContent,
+                  sender: "ai",
+                  created_at: new Date().toISOString(),
+                };
+                tempAiMsgId = tempMsg.id;
+                return [...prev, tempMsg];
+              });
+            }
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+
+      // Save final AI message to database
+      if (assistantContent) {
+        const { data: aiMsg } = await supabase
           .from('messages')
           .insert([{
             conversation_id: conversationId,
-            content: "That's awesome! I love hearing about your day. What else is going on? 🌟",
+            content: assistantContent,
             sender: 'ai'
           }])
           .select()
           .single();
 
-        if (aiError) throw aiError;
-
-        setMessages((prev) => [...prev, aiMsg as Message]);
-      }, 1000);
+        // Replace temp message with real one
+        if (aiMsg) {
+          setMessages((prev) => 
+            prev.map((m) => m.id === tempAiMsgId ? aiMsg as Message : m)
+          );
+        }
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -153,6 +271,8 @@ const Chat = () => {
         variant: "destructive",
       });
       setInputValue(userContent);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -174,11 +294,13 @@ const Chat = () => {
             </Button>
           </Link>
           <Avatar className="w-10 h-10 border-2 border-friendly/30">
-            <AvatarImage src={aiGirlfriendAvatar} alt="Alex" />
-            <AvatarFallback className="bg-friendly text-friendly-foreground">A</AvatarFallback>
+            <AvatarImage src={aiGirlfriendAvatar} alt={companionName} />
+            <AvatarFallback className="bg-friendly text-friendly-foreground">
+              {companionName[0]}
+            </AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <h1 className="text-lg font-semibold text-foreground">Alex</h1>
+            <h1 className="text-lg font-semibold text-foreground">{companionName}</h1>
             <p className="text-xs text-muted-foreground">Online • Always here for you</p>
           </div>
         </div>
@@ -260,6 +382,7 @@ const Chat = () => {
             <Button
               onClick={handleSend}
               className="gradient-friendly text-white border-0 hover:opacity-90"
+              disabled={isSending}
             >
               <Send className="w-4 h-4" />
             </Button>
