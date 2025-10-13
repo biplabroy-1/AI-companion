@@ -21,7 +21,7 @@ const Auth = () => {
     // Check if already logged in
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
-        navigate("/chat");
+        navigate("/");
       }
     });
   }, [navigate]);
@@ -35,7 +35,7 @@ const Auth = () => {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/chat`,
+          emailRedirectTo: `${window.location.origin}`,
           data: {
             full_name: name,
           },
@@ -64,7 +64,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/chat`,
+          redirectTo: `${window.location.origin}`,
         },
       });
 
@@ -90,7 +90,7 @@ const Auth = () => {
 
       if (error) throw error;
 
-      navigate("/chat");
+      navigate("/");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -118,7 +118,7 @@ const Auth = () => {
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
@@ -138,6 +138,7 @@ const Auth = () => {
                   <Input
                     id="signin-password"
                     type="password"
+                    placeholder="Enter your password..."
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -151,7 +152,7 @@ const Auth = () => {
                 >
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
-                
+
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
@@ -160,7 +161,7 @@ const Auth = () => {
                     <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <Button
                     type="button"
@@ -168,6 +169,7 @@ const Auth = () => {
                     onClick={() => handleOAuthSignIn('google')}
                     className="border-friendly/20"
                   >
+                    <img width="24" height="24" src="https://img.icons8.com/material-sharp/24/google-logo.png" alt="google-logo" />
                     Google
                   </Button>
                   <Button
@@ -176,12 +178,13 @@ const Auth = () => {
                     onClick={() => handleOAuthSignIn('github')}
                     className="border-friendly/20"
                   >
+                    <img width="24" height="24" src="https://img.icons8.com/fluency/48/github.png" alt="github" />
                     GitHub
                   </Button>
                 </div>
               </form>
             </TabsContent>
-            
+
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
@@ -213,6 +216,7 @@ const Auth = () => {
                   <Input
                     id="signup-password"
                     type="password"
+                    placeholder="Create a password..."
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -227,7 +231,7 @@ const Auth = () => {
                 >
                   {loading ? "Creating account..." : "Sign Up"}
                 </Button>
-                
+
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t" />
@@ -236,7 +240,7 @@ const Auth = () => {
                     <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <Button
                     type="button"

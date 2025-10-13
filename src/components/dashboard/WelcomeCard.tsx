@@ -1,4 +1,4 @@
-import { Heart, MessageCircle } from "lucide-react";
+import { MessageCircle, Phone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -9,28 +9,30 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const WelcomeCard = () => {
   const [userName, setUserName] = useState("friend");
-  const [companionName, setCompanionName] = useState("Alex");
-  
+  const [companionName, setCompanionName] = useState("");
+
   useEffect(() => {
     const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
+      console.log(user);
+
       if (user?.user_metadata?.full_name) {
         setUserName(user.user_metadata.full_name);
       }
-      
+
       const { data: config } = await supabase
         .from("companion_config")
         .select("companion_name")
         .single();
-      
+
       if (config) {
         setCompanionName(config.companion_name);
       }
     };
-    
+
     fetchData();
   }, []);
-  
+
   return (
     <Card className="gradient-friendly text-white border-0 animate-glow">
       <CardContent className="p-6">
@@ -44,7 +46,7 @@ export const WelcomeCard = () => {
             <p className="text-white/80">{companionName} is happy to see you</p>
           </div>
         </div>
-        
+
         <div className="flex gap-3">
           <Link to="/chat">
             <Button variant="outline" className="bg-white/20 border-white/30 text-white hover:bg-white/30">
@@ -53,8 +55,8 @@ export const WelcomeCard = () => {
             </Button>
           </Link>
           <Button variant="outline" className="bg-white/20 border-white/30 text-white hover:bg-white/30">
-            <Heart className="w-4 h-4 mr-2" />
-            Send Support
+            <Phone className="w-4 h-4 mr-2" />
+            Call Me
           </Button>
         </div>
       </CardContent>

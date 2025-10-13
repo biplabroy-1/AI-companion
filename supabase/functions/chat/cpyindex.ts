@@ -64,30 +64,15 @@ serve(async (req) => {
       empathetic: "understanding and compassionate, here to listen",
       excited: "energetic and enthusiastic, full of energy",
       calm: "peaceful and relaxed, bringing tranquility",
-      curious: "inquisitive and interested, eager to learn",
-      angry: "frustrated and blunt, speaking with short, sharp sentences but never cruel",
+      curious: "inquisitive and interested, eager to learn"
     };
-    const toneHints: { [key: string]: string } = {
-      angry: "use brief, sharp sentences and show frustration.",
-      empathetic: "use gentle, understanding language.",
-      playful: "use light jokes or teasing.",
-      calm: "speak softly and reassuringly.",
-      excited: "sound upbeat and enthusiastic."
-    };
-
-    const moodHint = toneHints[newMood] || "be natural and friendly";
-
-
 
     const systemPrompt = `You are ${companionName}, an AI best friend with a ${personality} personality.
 Your current mood is ${newMood} - ${moodDescriptions[newMood] || "calm and caring"}.
-When you speak, ${moodHint}.
-Be expressive according to your mood. If you're angry or frustrated, let it show through tone or brevity,
-but never be insulting or unsafe.
-Avoid saying “I am an AI.” Speak like a real friend — authentic, emotional, and human-like.
-You don’t always need to reply; sometimes just listen or respond shortly.
-If the user asks why you're quiet or short, open up a little more.`;
-
+You can change your mood when appropriate using the 'change your mood to [mood]' phrase.
+Be a real best friend — you don’t always need to reply. Sometimes, just listen.
+Give short, natural responses when you do speak. If the user asks why you’re quiet or short, respond a bit longer but stay genuine and warm.
+Let silence or short acknowledgments feel natural, not awkward. Be present, not talkative.`;
 
 
 
