@@ -4,8 +4,33 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "react-router-dom";
 import aiGirlfriendAvatar from "@/assets/ai-girlfriend-avatar.png";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export const WelcomeCard = () => {
+  const [userName, setUserName] = useState("friend");
+  const [companionName, setCompanionName] = useState("Alex");
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.user_metadata?.full_name) {
+        setUserName(user.user_metadata.full_name);
+      }
+      
+      const { data: config } = await supabase
+        .from("companion_config")
+        .select("companion_name")
+        .single();
+      
+      if (config) {
+        setCompanionName(config.companion_name);
+      }
+    };
+    
+    fetchData();
+  }, []);
+  
   return (
     <Card className="gradient-friendly text-white border-0 animate-glow">
       <CardContent className="p-6">
@@ -15,8 +40,8 @@ export const WelcomeCard = () => {
             <AvatarFallback className="bg-friendly text-friendly-foreground">AI</AvatarFallback>
           </Avatar>
           <div>
-            <h2 className="text-2xl font-bold">Hey there, friend! 👋</h2>
-            <p className="text-white/80">Alex is happy to see you</p>
+            <h2 className="text-2xl font-bold">Hey there, {userName}! 👋</h2>
+            <p className="text-white/80">{companionName} is happy to see you</p>
           </div>
         </div>
         

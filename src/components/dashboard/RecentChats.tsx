@@ -4,29 +4,37 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { MessageCircle, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import aiGirlfriendAvatar from "@/assets/ai-girlfriend-avatar.png";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { formatDistanceToNow } from "date-fns";
 
-const recentMessages = [
-  {
-    id: 1,
-    message: "Good morning! How did you sleep? Hope you're feeling great! 😊",
-    time: "2 hours ago",
-    type: "received"
-  },
-  {
-    id: 2,
-    message: "I saw this funny meme and thought you'd enjoy it!",
-    time: "3 hours ago",
-    type: "received"
-  },
-  {
-    id: 3,
-    message: "Can't wait to hear about your day! 🌟",
-    time: "5 hours ago",
-    type: "received"
-  }
-];
+interface Message {
+  id: string;
+  content: string;
+  created_at: string;
+  sender: string;
+}
 
 export const RecentChats = () => {
+  const [recentMessages, setRecentMessages] = useState<Message[]>([]);
+  
+  useEffect(() => {
+    const fetchRecentMessages = async () => {
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("sender", "assistant")
+        .order("created_at", { ascending: false })
+        .limit(3);
+      
+      if (data && !error) {
+        setRecentMessages(data);
+      }
+    };
+    
+    fetchRecentMessages();
+  }, []);
+  
   return (
     <Card className="border-primary/20">
       <CardHeader className="flex-row items-center justify-between space-y-0">
@@ -42,18 +50,26 @@ export const RecentChats = () => {
         </Link>
       </CardHeader>
       <CardContent className="space-y-3">
-        {recentMessages.map((msg) => (
-          <div key={msg.id} className="flex gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors">
-            <Avatar className="w-8 h-8">
-              <AvatarImage src={aiGirlfriendAvatar} alt="Alex" />
-              <AvatarFallback className="bg-friendly text-friendly-foreground text-xs">A</AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-foreground line-clamp-2">{msg.message}</p>
-              <p className="text-xs text-muted-foreground mt-1">{msg.time}</p>
+        {recentMessages.length > 0 ? (
+          recentMessages.map((msg) => (
+            <div key={msg.id} className="flex gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors">
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={aiGirlfriendAvatar} alt="Alex" />
+                <AvatarFallback className="bg-friendly text-friendly-foreground text-xs">A</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-foreground line-clamp-2">{msg.content}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No messages yet. Start a conversation!
+          </p>
+        )}
         
         <Link to="/chat" className="block">
           <Button className="w-full gradient-friendly text-white border-0 hover:opacity-90">
