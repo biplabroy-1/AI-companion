@@ -7,7 +7,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
+const moodConfig = {
+  supportive: { message: "Here to support you! 💝" },
+  happy: { message: "Feeling great today! 😊" },
+  playful: { message: "Let's have some fun! ✨" },
+  thoughtful: { message: "Thinking deeply... 🤔" },
+  empathetic: { message: "I'm here for you 💙" },
+  excited: { message: "So excited to chat! ⚡" },
+  calm: { message: "Peaceful and relaxed 🌊" },
+  curious: { message: "Let's explore together! 🔍" },
+  angry: { message: "I'm a bit upset right now 😠" },
+};
+
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }

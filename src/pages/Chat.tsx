@@ -10,6 +10,8 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import aiGirlfriendAvatar from "@/assets/ai-girlfriend-avatar.png";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { moodConfig } from "@/lib/shared";
 
 interface Message {
   id: string;
@@ -24,7 +26,8 @@ const Chat = () => {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [companionName, setCompanionName] = useState("Alex");
+  const [companionName, setCompanionName] = useState("");
+  const [mood, setMood] = useState("");
   const [personality, setPersonality] = useState("friendly, supportive, and engaging");
   const [userId, setUserId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -59,6 +62,7 @@ const Chat = () => {
         if (config) {
           setCompanionName(config.companion_name);
           setPersonality(config.personality);
+          setMood(config.mood);
         }
 
         // Get or create conversation
@@ -118,6 +122,26 @@ const Chat = () => {
     };
 
     initializeConversation();
+
+    const channel = supabase
+      .channel('mood-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'companion_config'
+        },
+        (payload) => {
+          if (payload.new?.mood) {
+            setMood(payload.new.mood as keyof typeof moodConfig);
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [navigate, companionName]);
 
   const handleSend = async () => {
@@ -293,7 +317,11 @@ const Chat = () => {
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <h1 className="text-lg font-semibold text-foreground">{companionName}</h1>
+            <div className="flex items-center gap-2">
+
+              <h1 className="text-lg font-semibold text-foreground">{companionName}</h1>
+              <Badge>{mood}</Badge>
+            </div>
             <p className="text-xs text-muted-foreground">Online • Always here for you</p>
           </div>
         </div>

@@ -7,22 +7,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { PersonalizationDialog } from "./PersonalizationDialog";
 
 export const PersonalizationCard = () => {
-  const [companionName, setCompanionName] = useState("Alex");
+  const [companionName, setCompanionName] = useState("");
   const [personality, setPersonality] = useState("friendly, supportive, and engaging");
   const [dialogOpen, setDialogOpen] = useState(false);
-  
+  const [loading, setLoading] = useState(true); // 👈 loading state
+
   const fetchConfig = async () => {
-    const { data } = await supabase
+    setLoading(true); // start loading
+    const { data, error } = await supabase
       .from("companion_config")
       .select("companion_name, personality")
       .single();
-    
+
     if (data) {
       setCompanionName(data.companion_name);
-      setPersonality(data.personality);
+      setPersonality(data.personality || "friendly, supportive, and engaging");
     }
+
+    setLoading(false); // done loading
   };
-  
+
   useEffect(() => {
     fetchConfig();
   }, []);
@@ -46,7 +50,7 @@ export const PersonalizationCard = () => {
               {companionName}
             </Badge>
           </div>
-          
+
           <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
             <div className="flex items-center gap-3">
               <Settings className="w-4 h-4 text-primary" />
@@ -56,12 +60,13 @@ export const PersonalizationCard = () => {
               {personality.split(",")[0]}...
             </Badge>
           </div>
-          
+
           <div className="pt-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full justify-start"
               onClick={() => setDialogOpen(true)}
+              disabled={loading} // optional: disable until loaded
             >
               <Settings className="w-4 h-4 mr-2" />
               Customize Settings
@@ -69,14 +74,17 @@ export const PersonalizationCard = () => {
           </div>
         </CardContent>
       </Card>
-      
-      <PersonalizationDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        companionName={companionName}
-        personality={personality}
-        onUpdate={fetchConfig}
-      />
+
+      {/* 🔒 Only render dialog when loading is false */}
+      {!loading && (
+        <PersonalizationDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          companionName={companionName}
+          personality={personality}
+          onUpdate={fetchConfig}
+        />
+      )}
     </>
   );
 };
