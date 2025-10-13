@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import aiGirlfriendAvatar from "@/assets/ai-girlfriend-avatar.png";
+import { toast } from "sonner";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -15,7 +15,6 @@ const Auth = () => {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   useEffect(() => {
     // Check if already logged in
@@ -35,7 +34,7 @@ const Auth = () => {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}`,
+          emailRedirectTo: window.location.origin,
           data: {
             full_name: name,
           },
@@ -44,15 +43,12 @@ const Auth = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Success!",
+      toast("Success!", {
         description: "Check your email to confirm your account.",
       });
     } catch (error: any) {
-      toast({
-        title: "Error",
+      toast("Error", {
         description: error.message,
-        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -62,18 +58,13 @@ const Auth = () => {
   const handleOAuthSignIn = async (provider: 'google' | 'github') => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}`,
-        },
+        provider
       });
 
       if (error) throw error;
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
+      toast("Error", {
+        description: error.message
       });
     }
   };
@@ -92,10 +83,8 @@ const Auth = () => {
 
       navigate("/");
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
+      toast("Error", {
+        description: error.message
       });
     } finally {
       setLoading(false);

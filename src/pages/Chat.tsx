@@ -8,8 +8,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Send, Smile } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import aiGirlfriendAvatar from "@/assets/ai-girlfriend-avatar.png";
+import { toast } from "sonner";
 
 interface Message {
   id: string;
@@ -28,7 +28,6 @@ const Chat = () => {
   const [personality, setPersonality] = useState("friendly, supportive, and engaging");
   const [userId, setUserId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,12 +41,12 @@ const Chat = () => {
     const initializeConversation = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        
+
         if (!user) {
           navigate("/auth");
           return;
         }
-        
+
         setUserId(user.id);
 
         // Get companion config
@@ -110,10 +109,8 @@ const Chat = () => {
 
         setMessages((msgs || []) as Message[]);
       } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
+        toast("Error", {
+          description: error.message
         });
       } finally {
         setIsLoading(false);
@@ -121,7 +118,7 @@ const Chat = () => {
     };
 
     initializeConversation();
-  }, [toast, navigate, companionName]);
+  }, [navigate, companionName]);
 
   const handleSend = async () => {
     if (!inputValue.trim() || !conversationId || isSending) return;
@@ -160,7 +157,7 @@ const Chat = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           messages: chatMessages,
           userId
         }),
@@ -168,18 +165,14 @@ const Chat = () => {
 
       if (!resp.ok) {
         if (resp.status === 429) {
-          toast({
-            title: "Rate limit exceeded",
+          toast("Rate limit exceeded", {
             description: "Please try again in a moment.",
-            variant: "destructive",
           });
           return;
         }
         if (resp.status === 402) {
-          toast({
-            title: "Payment required",
+          toast("Payment required", {
             description: "Please add funds to your Lovable AI workspace.",
-            variant: "destructive",
           });
           return;
         }
@@ -220,12 +213,12 @@ const Chat = () => {
             const content = parsed.choices?.[0]?.delta?.content as string | undefined;
             if (content) {
               assistantContent += content;
-              
+
               // Update UI with streaming content
               setMessages((prev) => {
                 const last = prev[prev.length - 1];
                 if (last?.id === tempAiMsgId) {
-                  return prev.map((m) => 
+                  return prev.map((m) =>
                     m.id === tempAiMsgId ? { ...m, content: assistantContent } : m
                   );
                 }
@@ -261,16 +254,14 @@ const Chat = () => {
 
         // Replace temp message with real one
         if (aiMsg) {
-          setMessages((prev) => 
+          setMessages((prev) =>
             prev.map((m) => m.id === tempAiMsgId ? aiMsg as Message : m)
           );
         }
       }
     } catch (error: any) {
-      toast({
-        title: "Error",
+      toast("Error", {
         description: "Failed to send message. Please try again.",
-        variant: "destructive",
       });
       setInputValue(userContent);
     } finally {
@@ -335,16 +326,14 @@ const Chat = () => {
                     </Avatar>
                   )}
                   <div
-                    className={`max-w-[70%] ${
-                      message.sender === "user" ? "items-end" : "items-start"
-                    } space-y-1`}
+                    className={`max-w-[70%] ${message.sender === "user" ? "items-end" : "items-start"
+                      } space-y-1`}
                   >
                     <Card
-                      className={`p-3 ${
-                        message.sender === "user"
-                          ? "gradient-friendly text-white border-0"
-                          : "bg-card border-friendly/20"
-                      }`}
+                      className={`p-3 ${message.sender === "user"
+                        ? "gradient-friendly text-white border-0"
+                        : "bg-card border-friendly/20"
+                        }`}
                     >
                       <p className="text-sm">{message.content}</p>
                     </Card>

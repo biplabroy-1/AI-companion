@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface PersonalizationDialogProps {
   open: boolean;
@@ -25,7 +25,6 @@ export const PersonalizationDialog = ({
   const [companionName, setCompanionName] = useState(initialName);
   const [personality, setPersonality] = useState(initialPersonality);
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
 
   const handleSave = async () => {
     setLoading(true);
@@ -40,18 +39,15 @@ export const PersonalizationDialog = ({
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
+      toast("Success", {
         description: "Personalization settings updated!",
       });
-      
+
       onUpdate();
       onOpenChange(false);
     } catch (error: any) {
-      toast({
-        title: "Error",
+      toast("Error", {
         description: error.message,
-        variant: "destructive",
       });
     } finally {
       setLoading(false);

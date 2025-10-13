@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import aiGirlfriendAvatar from "@/assets/ai-girlfriend-avatar.png";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const WelcomeCard = () => {
   const [userName, setUserName] = useState("friend");
@@ -54,7 +55,7 @@ export const WelcomeCard = () => {
               Chat Now
             </Button>
           </Link>
-          <Button variant="outline" className="bg-white/20 border-white/30 text-white hover:bg-white/30">
+          <Button onClick={() => toast("This is under development", { description: "Stay tuned for updates!" })} variant="outline" className="bg-white/20 border-white/30 text-white hover:bg-white/30">
             <Phone className="w-4 h-4 mr-2" />
             Call Me
           </Button>

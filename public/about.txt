@@ -1,0 +1,6 @@
+This favicon was generated using the following font:
+
+- Font Title: Nova Mono
+- Font Author: undefined
+- Font Source: https://fonts.gstatic.com/s/novamono/v22/Cn-0JtiGWQ5Ajb--MRKfYGxYrdM9Sg.ttf
+- Font License: undefined)
