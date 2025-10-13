@@ -19,6 +19,7 @@ export type Database = {
           companion_name: string
           created_at: string
           id: string
+          mood: string
           personality: string
           updated_at: string
           user_id: string
@@ -27,6 +28,7 @@ export type Database = {
           companion_name?: string
           created_at?: string
           id?: string
+          mood?: string
           personality?: string
           updated_at?: string
           user_id: string
@@ -35,6 +37,7 @@ export type Database = {
           companion_name?: string
           created_at?: string
           id?: string
+          mood?: string
           personality?: string
           updated_at?: string
           user_id?: string

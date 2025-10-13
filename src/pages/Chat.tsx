@@ -26,6 +26,7 @@ const Chat = () => {
   const [isSending, setIsSending] = useState(false);
   const [companionName, setCompanionName] = useState("Alex");
   const [personality, setPersonality] = useState("friendly, supportive, and engaging");
+  const [userId, setUserId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -46,6 +47,8 @@ const Chat = () => {
           navigate("/auth");
           return;
         }
+        
+        setUserId(user.id);
 
         // Get companion config
         const { data: config } = await supabase
@@ -159,8 +162,7 @@ const Chat = () => {
         },
         body: JSON.stringify({ 
           messages: chatMessages,
-          companionName,
-          personality
+          userId
         }),
       });
 
