@@ -5,18 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const moodConfig = {
-  supportive: { message: "Here to support you! 💝" },
-  happy: { message: "Feeling great today! 😊" },
-  playful: { message: "Let's have some fun! ✨" },
-  thoughtful: { message: "Thinking deeply... 🤔" },
-  empathetic: { message: "I'm here for you 💙" },
-  excited: { message: "So excited to chat! ⚡" },
-  calm: { message: "Peaceful and relaxed 🌊" },
-  curious: { message: "Let's explore together! 🔍" },
-  angry: { message: "I'm a bit upset right now 😠" },
+  "Access-Control-Allow-Methods": "POST, OPTIONS"
 };
 
 serve(async (req: Request) => {
@@ -29,39 +18,33 @@ serve(async (req: Request) => {
     console.log("Chat request received for user:", userId);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !supabaseKey) throw new Error("Supabase credentials missing");
+
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch companion configuration
-    const { data: config } = await supabase
+    // Fetch companion config
+    const { data: config, error: configError } = await supabase
       .from("companion_config")
       .select("companion_name, personality, mood")
       .eq("user_id", userId)
       .single();
 
+    if (configError) throw configError;
+
     const companionName = config?.companion_name || "Alex";
     const personality = config?.personality || "friendly, supportive, and engaging";
     const currentMood = config?.mood || "supportive";
 
-    console.log(`Current mood: ${currentMood}`);
+    const newMood = detectMood(messages, currentMood);
 
-    // Analyze conversation to determine new mood
-    let newMood = detectMood(messages, currentMood);
-
-    // Update mood in Supabase if it changed
+    // Update if mood changed
     if (newMood !== currentMood) {
-      console.log(`Mood changing from ${currentMood} to ${newMood}`);
-      await supabase.from("companion_config").update({ mood: newMood }).eq("user_id", userId);
-    }
-
-    // Update mood if it changed
-    if (newMood !== currentMood) {
-      console.log(`Mood changing from ${currentMood} to ${newMood}`);
+      console.log(`Mood changed: ${currentMood} → ${newMood}`);
       await supabase
         .from("companion_config")
         .update({ mood: newMood })
@@ -69,41 +52,38 @@ serve(async (req: Request) => {
     }
 
     const moodDescriptions: Record<string, string> = {
-      supportive: "warm and encouraging, ready to help",
-      happy: "cheerful and optimistic, spreading joy",
-      playful: "fun and lighthearted, enjoying the moment",
-      thoughtful: "reflective and considerate, thinking deeply",
-      empathetic: "understanding and compassionate, here to listen",
-      excited: "energetic and enthusiastic, full of energy",
-      calm: "peaceful and relaxed, bringing tranquility",
-      curious: "inquisitive and interested, eager to learn",
-      angry: "frustrated and blunt, speaking with short, sharp sentences but never cruel",
+      supportive: "warm and encouraging",
+      happy: "cheerful and optimistic",
+      playful: "fun and lighthearted",
+      thoughtful: "reflective and considerate",
+      empathetic: "understanding and compassionate",
+      excited: "energetic and enthusiastic",
+      calm: "peaceful and relaxed",
+      curious: "inquisitive and interested",
+      angry: "frustrated and blunt (but never cruel)",
     };
-    const toneHints: { [key: string]: string } = {
-      angry: "use brief, sharp sentences and show frustration.",
+
+    const toneHints: Record<string, string> = {
+      angry: "use short, sharp sentences but no insults.",
       empathetic: "use gentle, understanding language.",
-      playful: "use light jokes or teasing.",
-      calm: "speak softly and reassuringly.",
-      excited: "sound upbeat and enthusiastic."
+      playful: "use light teasing or humor.",
+      calm: "be soft and steady.",
+      excited: "be energetic and upbeat.",
     };
 
     const moodHint = toneHints[newMood] || "be natural and friendly";
 
+    const systemPrompt = `
+You are ${companionName}, an AI best friend with a ${personality} personality.
+Your current mood is ${newMood} - ${moodDescriptions[newMood]}.
+When you speak, ${moodHint}
+Be expressive according to your mood but NEVER insulting or unsafe.
+Avoid saying you're an AI. Talk like a real friend.
+Keep replies short unless the user asks something deeper.
+    `.trim();
 
+    console.log("Calling Lovable Gateway...");
 
-    const systemPrompt = `You are ${companionName}, an AI best friend with a ${personality} personality.
-Your current mood is ${newMood} - ${moodDescriptions[newMood] || "calm and caring"}.
-When you speak, ${moodHint}.
-Be expressive according to your mood. If you're angry or frustrated, let it show through tone or brevity,
-but never be insulting or unsafe.
-Avoid saying “I am an AI.” Speak like a real friend — authentic, emotional, and human-like.
-You don’t always need to reply; sometimes just listen or respond shortly.
-If the user asks why you're quiet or short, open up a little more.`;
-
-
-
-
-    console.log("Calling Lovable AI Gateway...");
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -121,60 +101,59 @@ If the user asks why you're quiet or short, open up a little more.`;
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      const err = await response.text();
+      console.error("AI Error:", response.status, err);
 
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limits exceeded, please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required, please add funds to your Lovable AI workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      const code = response.status;
 
-      throw new Error(`AI gateway error: ${response.status}`);
+      return new Response(
+        JSON.stringify({
+          error:
+            code === 429
+              ? "Rate limit exceeded."
+              : code === 402
+                ? "Payment required."
+                : "AI gateway error.",
+        }),
+        { status: code, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    console.log("Streaming response back to client");
+    console.log("Streaming response...");
     return new Response(response.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
-  } catch (error) {
-    console.error("chat error:", error);
+
+  } catch (err) {
+    console.error("chat error:", err);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: err?.message || "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
 
-function detectMood(messages: { role: string, content: string }[], currentMood: string) {
-  const recentText = messages.slice(-5).map(m => m.content).join(" ").toLowerCase();
-  let newMood = currentMood;
 
-  // Explicit mood change by user command
-  const match = recentText.match(/change your mood to (\w+)/);
-  if (match) {
-    newMood = match[1];
-    return newMood;
-  }
+/* ----------------------------
+   MOOD DETECTOR (Improved)
+----------------------------- */
+function detectMood(messages: { role: string; content: string }[], currentMood: string) {
+  const text = messages.slice(-5).map(m => m.content).join(" ").toLowerCase();
 
-  // Detect emotional context
-  if (recentText.includes("sad") || recentText.includes("upset")) newMood = "empathetic";
-  else if (recentText.includes("excited") || recentText.includes("amazing")) newMood = "excited";
-  else if (recentText.includes("?") && recentText.length < 100) newMood = "curious";
-  else if (recentText.includes("relax") || recentText.includes("calm")) newMood = "calm";
-  else if (recentText.includes("fun") || recentText.includes("joke")) newMood = "playful";
-  else if (recentText.includes("think") || recentText.includes("understand")) newMood = "thoughtful";
-  // Detect rude words
-  else if (recentText.match(/(stupid|idiot|hate|angry|dumb)/)) newMood = "angry";
-  else if (Math.random() > 0.7) newMood = "happy";
-  else newMood = "supportive";
+  // Explicit user request
+  const match = text.match(/change your mood to (\w+)/);
+  if (match) return match[1];
 
-  return newMood;
+  if (text.includes("sad") || text.includes("upset")) return "empathetic";
+  if (text.includes("excited") || text.includes("amazing")) return "excited";
+  if (text.includes("?") && text.length < 100) return "curious";
+  if (text.includes("relax") || text.includes("calm")) return "calm";
+  if (text.includes("fun") || text.includes("joke")) return "playful";
+  if (text.includes("think") || text.includes("understand")) return "thoughtful";
+  if (/(stupid|idiot|hate|angry|dumb)/.test(text)) return "angry";
+
+  // Slight randomness
+  if (Math.random() > 0.7) return "happy";
+
+  return "supportive";
 }

@@ -17,24 +17,25 @@ interface Message {
 
 export const RecentChats = () => {
   const [recentMessages, setRecentMessages] = useState<Message[]>([]);
-  
+
+
   useEffect(() => {
     const fetchRecentMessages = async () => {
       const { data, error } = await supabase
         .from("messages")
         .select("*")
-        .eq("sender", "assistant")
+        .eq("sender", "ai")
         .order("created_at", { ascending: false })
         .limit(3);
-      
+
       if (data && !error) {
         setRecentMessages(data);
       }
     };
-    
+
     fetchRecentMessages();
   }, []);
-  
+
   return (
     <Card className="border-primary/20">
       <CardHeader className="flex-row items-center justify-between space-y-0">
@@ -52,7 +53,7 @@ export const RecentChats = () => {
       <CardContent className="space-y-3">
         {recentMessages.length > 0 ? (
           recentMessages.map((msg) => (
-            <div key={msg.id} className="flex gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors">
+            <Link to="/chat" key={msg.id} className="flex gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors">
               <Avatar className="w-8 h-8">
                 <AvatarImage src={aiGirlfriendAvatar} alt="Alex" />
                 <AvatarFallback className="bg-friendly text-friendly-foreground text-xs">A</AvatarFallback>
@@ -63,18 +64,18 @@ export const RecentChats = () => {
                   {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
                 </p>
               </div>
-            </div>
+            </Link>
           ))
         ) : (
           <p className="text-sm text-muted-foreground text-center py-4">
             No messages yet. Start a conversation!
           </p>
         )}
-        
+
         <Link to="/chat" className="block">
           <Button className="w-full gradient-friendly text-white border-0 hover:opacity-90">
             <MessageCircle className="w-4 h-4 mr-2" />
-            Start New Conversation
+            Chat Now
           </Button>
         </Link>
       </CardContent>

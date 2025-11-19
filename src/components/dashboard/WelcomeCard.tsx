@@ -4,14 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "react-router-dom";
 import aiGirlfriendAvatar from "@/assets/ai-girlfriend-avatar.png";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Input } from "../ui/input";
 
 export const WelcomeCard = () => {
   const [userName, setUserName] = useState("friend");
   const [companionName, setCompanionName] = useState("");
-
+  const [phoneNumber, setPhoneNumber] = useState("+91");
+  const moodRef = useRef("supportive");
   useEffect(() => {
     const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -23,16 +25,53 @@ export const WelcomeCard = () => {
 
       const { data: config } = await supabase
         .from("companion_config")
-        .select("companion_name")
+        .select("companion_name , mood")
         .single();
 
       if (config) {
         setCompanionName(config.companion_name);
+        moodRef.current = config.mood;
       }
     };
 
     fetchData();
   }, []);
+
+  async function callUser() {
+    try {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        toast.error("You must be logged in.");
+        return;
+      }
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/call`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            contact: { name: userName, contact: phoneNumber },
+          }),
+        }
+      );
+      const responce = await res.json();
+      if (responce.status) {
+        toast("Success", { description: "Call initiated successfully." });
+      }
+    } catch (error) {
+      console.log(error);
+      toast("Error", { description: "Could not initiate call." });
+    }
+  }
+
 
   return (
     <Card className="gradient-friendly text-white border-0 animate-glow">
@@ -44,7 +83,7 @@ export const WelcomeCard = () => {
           </Avatar>
           <div>
             <h2 className="text-2xl font-bold">Hey there, {userName}! 👋</h2>
-            <p className="text-white/80">{companionName} is happy to see you</p>
+            <p className="text-white/80">{companionName} is {moodRef.current} to see you</p>
           </div>
         </div>
 
@@ -55,9 +94,10 @@ export const WelcomeCard = () => {
               Chat Now
             </Button>
           </Link>
-          <Button onClick={() => toast("This is under development", { description: "Stay tuned for updates!" })} variant="outline" className="bg-white/20 border-white/30 text-white hover:bg-white/30">
+          <Input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Your phone number" className="bg-white/20 border-white/30 text-white placeholder-white/70 focus:ring-white/50 focus:border-white/50" />
+          <Button onClick={() => callUser()} variant="outline" className="bg-white/20 border-white/30 text-white hover:bg-white/30">
             <Phone className="w-4 h-4 mr-2" />
-            Call Me
+            Call
           </Button>
         </div>
       </CardContent>
