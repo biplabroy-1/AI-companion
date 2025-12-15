@@ -1,8 +1,10 @@
 <div align="center">
 
-# AI Companion (Lovable + Supabase)
+# AI Companion
 
-An adaptive AI "best friend" chat application with mood-aware responses, personalization, and streaming AI completions. Built with React, Vite, Tailwind, shadcn-ui, Supabase, and Lovable's AI Gateway.
+An adaptive AI "best friend" chat application with mood-aware responses, personalization, and streaming AI completions. Built with React, Vite, Tailwind, shadcn-ui, Supabase, and GROQ's AI Gateway.
+
+Voice/calling is powered by LiveKit (self-hosted on our GCP server) with Twilio as the phone number provider, Deepgram for streaming speech-to-text (STT), Groq for LLM inference, and ElevenLabs for text-to-speech (TTS).
 
 </div>
 
@@ -23,7 +25,7 @@ An adaptive AI "best friend" chat application with mood-aware responses, persona
 11. Personalization Model
 12. UI Components Inventory
 13. Local Development
-14. Deployment (Vercel / Lovable)
+14. Deployment (Vercel)
 15. Security & Data Protection
 16. LLM Context Guide (For Model Ingestion)
 17. Troubleshooting
@@ -33,7 +35,7 @@ An adaptive AI "best friend" chat application with mood-aware responses, persona
 
 ## 1. Overview
 
-This project implements an AI-powered companion that adapts its tone ("mood") based on recent user messages, persists personalization settings per user, and streams responses from an external AI provider (Lovable AI Gateway). Supabase is used for authentication (future-ready), configuration storage, and edge functions. The frontend is a modern, componentized dashboard with chat, stats, and personalization dialogs.
+This project implements an AI-powered companion that adapts its tone ("mood") based on recent user messages, persists personalization settings per user, and streams responses from an external AI provider (Groq AI Gateway). Supabase is used for authentication (future-ready), configuration storage, and edge functions. The frontend is a modern, componentized dashboard with chat, stats, and personalization dialogs.
 
 ## 2. Feature Highlights
 
@@ -44,6 +46,9 @@ This project implements an AI-powered companion that adapts its tone ("mood") ba
 - Modular UI based on shadcn-ui primitives for rapid extension.
 - TypeScript throughout for safety and clarity.
 - Supabase edge functions for secure server-side logic (no service role key leakage to client).
+- Real-time voice calls: LiveKit for media, Twilio for PSTN numbers.
+- Voice pipeline: Deepgram (STT) → Groq (LLM) → ElevenLabs (TTS).
+- LiveKit server self-hosted on GCP for low-latency media routing.
 
 ## 3. Architecture & Flow
 
@@ -51,7 +56,7 @@ This project implements an AI-powered companion that adapts its tone ("mood") ba
 User (Browser) ──► React Chat UI ──► POST /functions/v1/chat (Supabase Edge Function)
 																	 │
 																	 ├─► Supabase (companion_config table)
-																	 ├─► Lovable AI Gateway (LLM inference)
+																	 ├─► Groq AI Gateway (LLM inference)
 																	 └─► Streams response back (SSE) to UI
 ```
 
@@ -61,17 +66,41 @@ High-level steps for a chat:
 2. Function loads companion config (or defaults).
 3. Mood detection evaluates last ~5 messages, may update stored mood.
 4. System prompt assembled with name, personality, mood interpretation.
-5. Request proxied to Lovable AI Gateway (`/v1/chat/completions`, streaming).
+5. Request proxied to Groq AI Gateway (`/v1/chat/completions`, streaming).
 6. Response body streamed directly to client as `text/event-stream`.
+
+Voice/Calling flow (high level):
+
+```
+Inbound Call (Twilio PSTN) or WebRTC Client
+	│
+	└──► LiveKit (self-hosted on GCP) — room/media SFU
+		   │           │
+		   │           ├─► Deepgram (streaming STT)
+		   │           │          │
+		   │           └──────────┤ text
+		   │                      ▼
+		   │                  Groq LLM
+		   │                      │ text
+		   │                      ▼
+		   └──────────────────► ElevenLabs (TTS)
+					  │ audio
+					  ▼
+				       LiveKit → caller
+```
 
 ## 4. Tech Stack
 
 - **Runtime / Build:** Vite + TypeScript
 - **UI:** React, Tailwind CSS, shadcn-ui component abstractions
 - **Backend / BaaS:** Supabase (Postgres, Auth, Edge Functions)
-- **AI Inference:** Lovable AI Gateway (Gemini model configured: `google/gemini-2.5-flash`)
+- **AI Inference:** Groq AI Gateway (Gemini model configured: `google/gemini-2.5-flash`)
 - **State & Config:** Supabase table `companion_config`
 - **Tooling:** ESLint, PostCSS, Bun/NPM compatibility
+- **Calling/Media:** LiveKit (self-hosted on GCP)
+- **Telephony:** Twilio (phone numbers / PSTN)
+- **STT:** Deepgram (streaming speech-to-text)
+- **TTS:** ElevenLabs (text-to-speech)
 
 ## 5. Directory Map
 
@@ -97,14 +126,23 @@ public/              # Static assets & web manifest
 
 These must be configured in Supabase dashboard (Edge Function environment) and locally (e.g., `.env` or Supabase config).
 
-| Variable                    | Purpose                                 | Scope              |
-| --------------------------- | --------------------------------------- | ------------------ |
-| `SUPABASE_URL`              | Base URL of Supabase project            | Edge + Frontend    |
-| `SUPABASE_ANON_KEY`         | Public anon key for client auth/queries | Frontend only      |
-| `SUPABASE_SERVICE_ROLE_KEY` | Elevated key for server-side operations | Edge Function ONLY |
-| `LOVABLE_API_KEY`           | Auth token for Lovable AI Gateway       | Edge Function ONLY |
+| Variable                    | Purpose                                 | Scope                               |
+| --------------------------- | --------------------------------------- | ----------------------------------- |
+| `SUPABASE_URL`              | Base URL of Supabase project            | Edge + Frontend                     |
+| `SUPABASE_ANON_KEY`         | Public anon key for client auth/queries | Frontend only                       |
+| `SUPABASE_SERVICE_ROLE_KEY` | Elevated key for server-side operations | Edge Function ONLY                  |
+| `Groq_API_KEY`              | Auth token for Groq AI Gateway          | Edge Function ONLY                  |
+| `LIVEKIT_URL`               | LiveKit server URL                      | Edge + Client (token fetch on Edge) |
+| `LIVEKIT_API_KEY`           | LiveKit API key                         | Edge Function ONLY                  |
+| `LIVEKIT_API_SECRET`        | LiveKit API secret                      | Edge Function ONLY                  |
+| `TWILIO_ACCOUNT_SID`        | Twilio account SID                      | Edge Function ONLY                  |
+| `TWILIO_AUTH_TOKEN`         | Twilio auth token                       | Edge Function ONLY                  |
+| `TWILIO_PHONE_NUMBER`       | E.164 phone number for PSTN             | Edge Function ONLY                  |
+| `DEEPGRAM_API_KEY`          | Deepgram API key (STT)                  | Edge Function ONLY                  |
+| `ELEVENLABS_API_KEY`        | ElevenLabs API key (TTS)                | Edge Function ONLY                  |
 
-Never expose `SERVICE_ROLE_KEY` or `LOVABLE_API_KEY` to the browser. Use Edge Functions to mediate requests.
+Never expose `SERVICE_ROLE_KEY` or `Groq_API_KEY` to the browser. Use Edge Functions to mediate requests.
+Similarly, keep Twilio, Deepgram, ElevenLabs, and LiveKit secrets on the server (Edge) only.
 
 ## 7. Supabase Schema & Migrations
 
@@ -176,7 +214,38 @@ Error codes mapped:
 
 ### 8.2 `call` Function
 
-Currently placeholder (refer to `supabase/functions/call/index.ts` when implemented). Document expected contract similarly.
+The `call` function acts as the voice/call integration surface. Typical responsibilities:
+
+- Mint LiveKit access tokens for authenticated users to join rooms.
+- Optionally coordinate Twilio PSTN bridging into a LiveKit room.
+- Provide signed credentials and session metadata required by the client.
+
+Path (via Supabase): `/functions/v1/call`
+
+Request Body (example):
+
+```json
+{
+  "userId": "<uuid>",
+  "room": "companion-voice",
+  "ttl": 3600
+}
+```
+
+Response (Success):
+
+```json
+{
+  "accessToken": "<livekit_jwt>",
+  "url": "<LIVEKIT_URL>",
+  "room": "companion-voice"
+}
+```
+
+Notes:
+
+- PSTN inbound calls arrive via Twilio and can be routed/SIP-trunked to LiveKit.
+- Media frames are transcribed with Deepgram (streaming STT), routed to Groq LLM, and synthesized via ElevenLabs (TTS) back to the caller.
 
 ## 9. Chat Function Detailed Walkthrough
 
@@ -185,7 +254,7 @@ Core steps:
 
 1. CORS preflight handled for `OPTIONS`.
 2. Parse `messages` & `userId` from JSON body.
-3. Load secrets: `LOVABLE_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+3. Load secrets: `Groq_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 4. Instantiate Supabase client (service role for mood update capability).
 5. Fetch companion config row; fall back to defaults if missing.
 6. Run `detectMood(messages, currentMood)` to determine new mood.
@@ -195,9 +264,11 @@ Core steps:
    - Personality traits
    - Current mood description + tone hints
    - Safety instructions (no insults)
-9. Forward request to Lovable AI Gateway (`/v1/chat/completions`, `stream: true`).
+9. Forward request to Groq AI Gateway (`/v1/chat/completions`, `stream: true`).
 10. Handle error branches; map upstream status to user-friendly message.
 11. Stream response body directly to client.
+12. Handle error branches; map upstream status to user-friendly message.
+13. Stream response body directly to client.
 
 ## 10. Mood Detection Logic
 
@@ -266,12 +337,8 @@ Frontend config should include `SUPABASE_URL` + `SUPABASE_ANON_KEY` (e.g., `.env
 
 ### Vercel
 
-- `vercel.json` present for configuration; deploy via `vercel` CLI or Lovable Publish.
+- `vercel.json` present for configuration; deploy via `vercel` CLI.
 - Set environment variables in Vercel dashboard (never commit `.env`).
-
-### Lovable Publish
-
-Use UI: Share → Publish. Then connect custom domain under Settings → Domains.
 
 ### Supabase Edge Functions
 
@@ -279,12 +346,14 @@ Deploy:
 
 ```sh
 supabase functions deploy chat --project-ref <PROJECT_REF>
+supabase functions deploy call --project-ref <PROJECT_REF>
 ```
 
 Invoke test:
 
 ```sh
 supabase functions invoke chat --body '{"userId":"<uuid>","messages":[{"role":"user","content":"hi"}]}'
+supabase functions invoke call --body '{"userId":"<uuid>","room":"companion-voice"}'
 ```
 
 ## 15. Security & Data Protection
@@ -301,14 +370,15 @@ If an external LLM (e.g., indexing assistant) loads this README, key concepts it
 
 1. Purpose: Mood-adaptive AI companion chat app.
 2. Core function: `supabase/functions/chat/index.ts` streaming AI responses.
-3. Env vars: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `LOVABLE_API_KEY`.
+3. Env vars: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `Groq_API_KEY`, `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY`.
 4. Data model: `companion_config` table with `companion_name`, `personality`, `mood`.
 5. Mood logic keywords & fallback order.
 6. System prompt structure (name + personality + mood + safety).
 7. API spec for `/functions/v1/chat` (request shape, streaming response).
-8. Safety constraints (no insults even when angry).
-9. Extension points: Add new moods, traits, persistent histories.
-10. Deployment paths (Vercel, Lovable, Supabase Functions).
+8. Voice stack: LiveKit (GCP), Twilio (PSTN), Deepgram (STT), ElevenLabs (TTS).
+9. Safety constraints (no insults even when angry).
+10. Extension points: Add new moods, traits, persistent histories.
+11. Deployment paths (Vercel, Groq, Supabase Functions, LiveKit on GCP).
 
 ### Suggested System Prompt Template (Reference)
 
@@ -322,13 +392,13 @@ Avoid saying you're an AI. Keep replies concise unless depth requested.
 
 ## 17. Troubleshooting
 
-| Issue                    | Cause                            | Fix                                                     |
-| ------------------------ | -------------------------------- | ------------------------------------------------------- |
-| 500 error from chat      | Missing env var                  | Ensure `LOVABLE_API_KEY`, Supabase keys set in Edge env |
-| 429 response             | Upstream rate limit              | Backoff/retry or upgrade plan                           |
-| Mood never changes       | Weak keyword presence            | Add more heuristics or refine detection                 |
-| Streaming not working    | Incorrect headers                | Ensure `text/event-stream` response maintained          |
-| Unauthorized data access | Using service role key in client | Move logic to Edge function                             |
+| Issue                    | Cause                            | Fix                                                  |
+| ------------------------ | -------------------------------- | ---------------------------------------------------- |
+| 500 error from chat      | Missing env var                  | Ensure `Groq_API_KEY`, Supabase keys set in Edge env |
+| 429 response             | Upstream rate limit              | Backoff/retry or upgrade plan                        |
+| Mood never changes       | Weak keyword presence            | Add more heuristics or refine detection              |
+| Streaming not working    | Incorrect headers                | Ensure `text/event-stream` response maintained       |
+| Unauthorized data access | Using service role key in client | Move logic to Edge function                          |
 
 ## 18. Roadmap / Extensibility
 

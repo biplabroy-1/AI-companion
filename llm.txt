@@ -1,0 +1,83 @@
+AI Companion - LLM Context Summary
+
+Purpose
+- An adaptive AI "best friend" that supports both text chat and real-time voice calls.
+- Adjusts tone via mood detection and user personalization.
+
+Core Modes
+- Text Chat: Frontend streams AI responses from a Supabase Edge Function (`/functions/v1/chat`).
+- Voice/Calling: LiveKit handles media; Twilio provides PSTN phone numbers; Deepgram does STT; Groq provides LLM inference; ElevenLabs generates TTS.
+
+Key Services
+- Supabase: Auth-ready backend, Edge Functions, Postgres for `companion_config`.
+- Groq (AI Gateway): LLM endpoint for text chat and voice pipeline reasoning.
+- LiveKit (self-hosted on GCP): WebRTC/SFU and room orchestration for low-latency audio.
+- Twilio: PSTN phone numbers and inbound call routing to LiveKit.
+- Deepgram: Streaming speech-to-text (transcribe caller audio).
+- ElevenLabs: Text-to-speech (synthesize responses back to caller).
+
+Primary Endpoints
+- `/functions/v1/chat` (Supabase Edge Function)
+  Input: `{ userId, messages[] }`
+  Output: `text/event-stream` (SSE token stream from Groq)
+- `/functions/v1/call` (Supabase Edge Function)
+  Responsibilities: Mint LiveKit access tokens; optional Twilio PSTN bridging; return `{ accessToken, url, room }`.
+
+Environment Variables (Server-side unless noted)
+- Supabase: `SUPABASE_URL` (Edge + Frontend), `SUPABASE_ANON_KEY` (Frontend), `SUPABASE_SERVICE_ROLE_KEY` (Edge)
+- Groq: `Groq_API_KEY` (Edge)
+- LiveKit: `LIVEKIT_URL` (Edge + Client via Edge token flow), `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` (Edge)
+- Twilio: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` (Edge)
+- Deepgram: `DEEPGRAM_API_KEY` (Edge)
+- ElevenLabs: `ELEVENLABS_API_KEY` (Edge)
+
+Data Model (Postgres)
+- Table: `companion_config`
+  Columns: `user_id (PK, uuid)`, `companion_name (text)`, `personality (text)`, `mood (text)`, `updated_at (timestamptz)`.
+  Purpose: Store per-user personalization and current mood.
+
+Chat Flow (Text)
+1) Client POSTs `{ userId, messages }` to `/functions/v1/chat`.
+2) Edge loads `companion_config` (defaults if missing).
+3) `detectMood(messages, currentMood)` decides mood; persists if changed.
+4) Build system prompt using name, personality, mood, safety.
+5) Forward to Groq chat completions with streaming; relay SSE tokens back.
+
+Voice Flow (Call)
+1) Inbound Twilio PSTN call or WebRTC client joins a LiveKit room.
+2) LiveKit routes audio; audio frames transcribed in real time via Deepgram.
+3) Transcripts fed into Groq LLM to generate responses.
+4) ElevenLabs synthesizes TTS; audio streamed back through LiveKit to the caller.
+
+Mood Detection Heuristics (Simplified)
+- Explicit: "change your mood to <mood>" overrides.
+- Keywords: `sad|upset → empathetic`, `excited|amazing → excited`, short questions → `curious`, `relax|calm → calm`, `fun|joke → playful`, `think|understand → thoughtful`, `stupid|idiot|hate|angry|dumb → angry`.
+- Random uplift: ~30% chance to `happy`.
+- Fallback: `supportive`.
+- Safety: never insult users even when mood is `angry`.
+
+System Prompt Template (Reference)
+You are <companion_name>, an AI best friend with a <personality> personality.
+Your current mood is <mood> - <description>.
+When you speak, <toneHint>.
+Be expressive but NEVER insulting or unsafe.
+Avoid saying you're an AI. Keep replies concise unless depth requested.
+
+Security & Constraints
+- Never expose service role keys or provider API keys to the browser.
+- All provider calls (Groq, LiveKit token minting, Twilio, Deepgram, ElevenLabs) happen on server/Edge.
+- Consider rate limits and map upstream 429/402/other errors to user-friendly messages.
+
+Source Layout (Selected)
+- `supabase/functions/chat/index.ts`: Chat SSE function using Groq; mood + prompt assembly.
+- `supabase/functions/call/index.ts`: Voice/call integration (LiveKit tokens, Twilio PSTN bridge) — implementation-specific.
+- `src/components/*`: shadcn-ui wrappers and dashboard components (mood indicator, personalization dialog).
+- `src/integrations/supabase/client.ts`: Supabase client for frontend.
+- `supabase/migrations/*.sql`: Schema migrations including `companion_config`.
+
+What Matters Most to the Model
+- This is a mood-adaptive companion with two modalities: text (SSE) and voice (LiveKit + PSTN).
+- LLM provider is Groq; STT is Deepgram; TTS is ElevenLabs.
+- LiveKit is self-hosted on GCP; Twilio supplies phone numbers and PSTN ingress.
+- All secrets server-side; do not leak keys to the client.
+- Use `companion_config` to personalize prompts and persist mood.
