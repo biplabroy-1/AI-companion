@@ -110,16 +110,7 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 
-  /* Solid premium surfaces — no gradients */
-  .gradient-friendly {
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-  }
-
-  .gradient-companion {
-    background: hsl(var(--secondary));
-    color: hsl(var(--secondary-foreground));
-  }
+  /* moved to utilities layer below so they override bg-card / text-* utilities */
 
   .gradient-text,
   .gradient-friendly-text,
