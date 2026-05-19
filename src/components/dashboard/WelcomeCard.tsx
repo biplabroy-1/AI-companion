@@ -13,6 +13,7 @@ export const WelcomeCard = () => {
   const [userName, setUserName] = useState("friend");
   const [companionName, setCompanionName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("+91");
+  const [isCalling, setIsCalling] = useState(false);
   const moodRef = useRef("supportive");
   useEffect(() => {
     const fetchData = async () => {
@@ -38,7 +39,10 @@ export const WelcomeCard = () => {
   }, []);
 
   async function callUser() {
+    if (isCalling) return;
+
     try {
+      setIsCalling(true);
       const {
         data: { session },
         error: sessionError,
@@ -62,13 +66,20 @@ export const WelcomeCard = () => {
           }),
         }
       );
-      const responce = await res.json();
-      if (responce.status) {
-        toast("Success", { description: "Call initiated successfully." });
+
+      const responseBody = await res.json();
+      if (!res.ok) {
+        throw new Error(responseBody?.error || responseBody?.providerBody?.error || "Call provider rejected the request.");
       }
+
+      toast.success("Calling...", { description: "The call is being placed now." });
     } catch (error) {
       console.log(error);
-      toast("Error", { description: "Could not initiate call." });
+      toast.error("Could not initiate call", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    } finally {
+      setIsCalling(false);
     }
   }
 
@@ -95,9 +106,9 @@ export const WelcomeCard = () => {
             </Button>
           </Link>
           <Input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Your phone number" className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/60 focus:ring-primary-foreground/40 focus:border-primary-foreground/40" />
-          <Button onClick={() => callUser()} variant="outline" className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20">
+          <Button onClick={() => callUser()} variant="outline" disabled={isCalling} className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/20 disabled:opacity-60 disabled:cursor-not-allowed">
             <Phone className="w-4 h-4 mr-2" />
-            Call
+            {isCalling ? "Calling..." : "Call"}
           </Button>
         </div>
       </CardContent>

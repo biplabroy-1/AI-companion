@@ -119,39 +119,61 @@ serve(async (req: Request) => {
             .update({ shared_context: sharedContext })
             .eq("user_id", userResult.user.id);
 
+        const vapiRequestBody = {
+            assistantId: VAPI_ASSISTANT_ID,
+            customer: {
+                name: sanitizedContact.name,
+                number: sanitizedContact.number,
+            },
+            assistantOverrides: {
+                firstMessage: `hey ${sanitizedContact.name}, it's me. you got a sec?`,
+                model: {
+                    messages: [
+                        {
+                            role: "system",
+                            content: buildCallPrompt(
+                                sanitizedContact.name,
+                                sharedContext,
+                                config?.companion_name ?? "Alex",
+                            ),
+                        },
+                    ],
+                },
+            },
+            phoneNumber: {
+                twilioAccountSid,
+                twilioAuthToken,
+                twilioPhoneNumber,
+            },
+        };
+
+        console.log("Creating Vapi call", {
+            assistantId: VAPI_ASSISTANT_ID,
+            customerNumber: sanitizedContact.number,
+            sharedContextLength: sharedContext.length,
+        });
+
         const vapiRes = await fetch("https://api.vapi.ai/call", {
             method: "POST",
             headers: {
                 Authorization: `Bearer ${VAPI_API_KEY}`,
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-                assistantId: VAPI_ASSISTANT_ID,
-                phoneNumber: {
-                    twilioAccountSid,
-                    twilioAuthToken,
-                    twilioPhoneNumber,
-                },
-                customer: sanitizedContact,
-                assistantOverrides: {
-                    firstMessage: `hey ${sanitizedContact.name}, it's me. you got a sec?`,
-                    model: {
-                        messages: [
-                            {
-                                role: "system",
-                                content: buildCallPrompt(sanitizedContact.name, sharedContext, config?.companion_name ?? "Alex"),
-                            },
-                        ],
-                    },
-                },
-            }),
+            body: JSON.stringify(vapiRequestBody),
         });
 
 
         const providerBody = await safeJson(vapiRes);
 
         if (!vapiRes.ok) {
-            console.error("VAPI call failed", { status: vapiRes.status, body: providerBody });
+            console.error("VAPI call failed", {
+                status: vapiRes.status,
+                body: providerBody,
+                request: {
+                    assistantId: VAPI_ASSISTANT_ID,
+                    customerNumber: sanitizedContact.number,
+                },
+            });
             return json(
                 {
                     error: "Call provider rejected the request",
