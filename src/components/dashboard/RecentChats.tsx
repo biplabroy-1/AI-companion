@@ -73,7 +73,7 @@ export const RecentChats = () => {
         )}
 
         <Link to="/chat" className="block">
-          <Button className="w-full gradient-friendly text-white border-0 hover:opacity-90">
+          <Button className="w-full gradient-friendly text-primary-foreground border-0 hover:opacity-90">
             <MessageCircle className="w-4 h-4 mr-2" />
             Chat Now
           </Button>
