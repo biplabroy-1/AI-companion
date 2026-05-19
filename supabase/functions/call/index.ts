@@ -128,6 +128,8 @@ serve(async (req: Request) => {
             assistantOverrides: {
                 firstMessage: `hey ${sanitizedContact.name}, it's me. you got a sec?`,
                 model: {
+                    provider: "groq",
+                    model: "openai/gpt-oss-120b",
                     messages: [
                         {
                             role: "system",
