@@ -145,3 +145,17 @@ All colors MUST be HSL.
     border: 1px solid hsl(var(--border));
   }
 }
+
+@layer utilities {
+  .gradient-friendly {
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+  }
+  .gradient-friendly * {
+    color: hsl(var(--primary-foreground));
+  }
+  .gradient-companion {
+    background-color: hsl(var(--secondary)) !important;
+    color: hsl(var(--secondary-foreground)) !important;
+  }
+}
