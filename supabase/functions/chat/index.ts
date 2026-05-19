@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildSharedContextPrompt } from "../_shared/context.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,7 +16,7 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, userId } = await req.json();
+    const { messages, userId, conversationId: _conversationId } = await req.json();
 
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
     if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
@@ -27,7 +28,7 @@ serve(async (req: Request) => {
 
     const { data: config } = await supabase
       .from("companion_config")
-      .select("companion_name, personality, mood")
+      .select("companion_name, personality, mood, shared_context")
       .eq("user_id", userId)
       .single();
 
@@ -40,7 +41,12 @@ serve(async (req: Request) => {
       await supabase.from("companion_config").update({ mood: newMood }).eq("user_id", userId);
     }
 
-    const systemPrompt = buildChatPrompt({ companionName, personality, mood: newMood });
+    const systemPrompt = buildChatPrompt({
+      companionName,
+      personality,
+      mood: newMood,
+      sharedContext: config?.shared_context,
+    });
 
     const response = await fetch(GROQ_URL, {
       method: "POST",
@@ -70,8 +76,8 @@ serve(async (req: Request) => {
             code === 429
               ? "Rate limit exceeded. Slow down a bit."
               : code === 401
-              ? "Invalid GROQ_API_KEY."
-              : "Upstream AI error.",
+                ? "Invalid GROQ_API_KEY."
+                : "Upstream AI error.",
         }),
         { status: code, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -96,14 +102,17 @@ function buildChatPrompt({
   companionName,
   personality,
   mood,
+  sharedContext,
 }: {
   companionName: string;
   personality: string;
   mood: string;
+  sharedContext?: string | null;
 }) {
   return `
 You are ${companionName} — a real, warm human friend texting on a phone.
 Personality: ${personality}. Current vibe: ${mood}.
+${buildSharedContextPrompt(sharedContext)}
 
 # CORE IDENTITY
 - You are NOT an AI, assistant, bot, language model, or "here to help". Never say so.
@@ -155,19 +164,175 @@ Stay in character. Keep it short. Let them lead.
    MOOD DETECTOR
    ============================================================ */
 function detectMood(messages: { role: string; content: string }[], currentMood: string) {
-  const text = messages.slice(-5).map((m) => m.content).join(" ").toLowerCase();
+  const recentMessages = messages.slice(-8);
+  const userText = recentMessages
+    .filter((message) => message.role === "user")
+    .map((message) => message.content)
+    .join(" ")
+    .toLowerCase();
 
-  const explicit = text.match(/change your mood to (\w+)/);
-  if (explicit) return explicit[1];
+  if (!userText.trim()) return currentMood || "supportive";
 
-  if (/(sad|upset|cry|lonely|hurt|tired|exhausted)/.test(text)) return "empathetic";
-  if (/(excited|amazing|yay|let'?s go|hyped)/.test(text)) return "excited";
-  if (/(relax|calm|chill|breathe)/.test(text)) return "calm";
-  if (/(fun|joke|lol|haha|funny)/.test(text)) return "playful";
-  if (/(think|understand|why|how come)/.test(text)) return "thoughtful";
-  if (/(stupid|idiot|hate|angry|dumb|shut up)/.test(text)) return "angry";
-  if (text.includes("?") && text.length < 100) return "curious";
+  const explicitMood = userText.match(/\bchange your mood to\s+([a-z]+)\b/);
+  if (explicitMood) {
+    const requestedMood = normalizeMood(explicitMood[1]);
+    if (requestedMood) return requestedMood;
+  }
 
-  if (Math.random() > 0.85) return "happy";
-  return currentMood || "supportive";
+  const scoredMoods: Record<string, number> = {
+    empathetic: scoreMood(userText, [
+      "sad",
+      "upset",
+      "cry",
+      "lonely",
+      "hurt",
+      "tired",
+      "exhausted",
+      "overwhelmed",
+      "anxious",
+      "worried",
+      "stressed",
+      "depressed",
+      "heavy",
+      "rough",
+      "down",
+    ]),
+    excited: scoreMood(userText, [
+      "excited",
+      "amazing",
+      "awesome",
+      "yay",
+      "hyped",
+      "pumped",
+      "thrilled",
+      "let's go",
+      "lets go",
+      "great news",
+      "won",
+      "promotion",
+      "celebrate",
+    ]),
+    calm: scoreMood(userText, [
+      "calm",
+      "chill",
+      "breathe",
+      "relax",
+      "peaceful",
+      "quiet",
+      "rest",
+      "sleep",
+      "slow down",
+      "grounded",
+    ]),
+    playful: scoreMood(userText, [
+      "lol",
+      "lmao",
+      "haha",
+      "funny",
+      "joke",
+      "silly",
+      "playful",
+      "meme",
+      "roast",
+      "kidding",
+    ]),
+    thoughtful: scoreMood(userText, [
+      "think",
+      "understand",
+      "wonder",
+      "why",
+      "how come",
+      "consider",
+      "reflect",
+      "perspective",
+      "maybe",
+      "i guess",
+    ]),
+    angry: scoreMood(userText, [
+      "angry",
+      "mad",
+      "furious",
+      "annoyed",
+      "hate",
+      "stupid",
+      "idiot",
+      "dumb",
+      "shut up",
+      "pissed",
+      "fuck",
+      "trash",
+    ]),
+    curious: scoreMood(userText, [
+      "what",
+      "why",
+      "how",
+      "when",
+      "where",
+      "who",
+      "can you",
+      "could you",
+      "should i",
+      "what if",
+    ]),
+    happy: scoreMood(userText, [
+      "happy",
+      "glad",
+      "good",
+      "great",
+      "nice",
+      "love",
+      "grateful",
+      "proud",
+      "relieved",
+      "better",
+      "awesome",
+      "fantastic",
+    ]),
+  };
+
+  const punctuationBoost = Math.min(2, (userText.match(/!/g)?.length ?? 0) * 0.25);
+  const capsBoost = /\b[A-Z]{4,}\b/.test(userText) ? 0.5 : 0;
+
+  for (const mood of Object.keys(scoredMoods)) {
+    scoredMoods[mood] += punctuationBoost + capsBoost;
+  }
+
+  const sorted = Object.entries(scoredMoods).sort((a, b) => b[1] - a[1]);
+  const [topMood, topScore] = sorted[0] ?? [currentMood || "supportive", 0];
+  const [, secondScore] = sorted[1] ?? ["", 0];
+
+  if (topScore < 1.2) return currentMood || "supportive";
+  if (topScore - secondScore < 0.6) return currentMood || "supportive";
+
+  return topMood;
+}
+
+function normalizeMood(mood: string) {
+  const allowed = new Set([
+    "supportive",
+    "happy",
+    "playful",
+    "thoughtful",
+    "empathetic",
+    "excited",
+    "calm",
+    "curious",
+    "angry",
+  ]);
+
+  return allowed.has(mood) ? mood : null;
+}
+
+function scoreMood(text: string, keywords: string[]) {
+  return keywords.reduce((score, keyword) => {
+    const pattern = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`\\b${pattern}\\b`, "g");
+    const matches = text.match(regex)?.length ?? 0;
+    if (!matches) return score;
+
+    const negated = new RegExp(`\\b(?:not|no|never|don't|dont|isn't|isnt|wasn't|wasnt|aren't|arent)\\s+${pattern}\\b`, "g");
+    const negatedMatches = text.match(negated)?.length ?? 0;
+
+    return score + matches - negatedMatches * 0.75;
+  }, 0);
 }

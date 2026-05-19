@@ -13,6 +13,35 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { moodConfig } from "@/lib/shared";
 
+function buildSharedContextSummary(
+  messages: Message[],
+  assistantContent?: string,
+  companionName?: string,
+  personality?: string,
+  mood?: string,
+) {
+  const recentMessages = messages.slice(-12).map((message) =>
+    `${message.sender}: ${message.content.replace(/\s+/g, " ").trim()}`
+  );
+
+  if (assistantContent?.trim()) {
+    recentMessages.push(`ai: ${assistantContent.replace(/\s+/g, " ").trim()}`);
+  }
+
+  const sections = [
+    companionName ? `latest chat context for ${companionName}:` : "latest chat context:",
+  ];
+
+  if (personality || mood) {
+    sections.push(`persona: ${[personality, mood].filter(Boolean).join(" | ")}`);
+  }
+
+  sections.push(...recentMessages);
+
+  const summary = sections.join("\n");
+  return summary.length > 1600 ? `${summary.slice(0, 1599).trimEnd()}…` : summary;
+}
+
 interface Message {
   id: string;
   content: string;
@@ -183,7 +212,8 @@ const Chat = () => {
         },
         body: JSON.stringify({
           messages: chatMessages,
-          userId
+          userId,
+          conversationId,
         }),
       });
 
@@ -282,6 +312,19 @@ const Chat = () => {
             prev.map((m) => m.id === tempAiMsgId ? aiMsg as Message : m)
           );
         }
+
+        const sharedContext = buildSharedContextSummary(
+          [...messages, userMsg as Message],
+          assistantContent,
+          companionName,
+          personality,
+          mood,
+        );
+
+        await supabase
+          .from('companion_config')
+          .update({ shared_context: sharedContext })
+          .eq('user_id', userId);
       }
     } catch (error: any) {
       toast("Error", {

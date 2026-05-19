@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildSharedContextPrompt, buildSharedContextSummary } from "../_shared/context.ts";
 
 const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
@@ -28,8 +29,8 @@ serve(async (req: Request) => {
         let sanitizedContact;
         try {
             sanitizedContact = validateContact(contact);
-        } catch (err) {
-            return json({ error: err.message }, 400);
+        } catch (err: unknown) {
+            return json({ error: err instanceof Error ? err.message : "Invalid contact" }, 400);
         }
 
         // ---------------- AUTH ----------------
@@ -73,6 +74,51 @@ serve(async (req: Request) => {
             return json({ error: "VAPI configuration incomplete" }, 500);
         }
 
+        const { data: config } = await supabase
+            .from("companion_config")
+            .select("companion_name, personality, mood, shared_context")
+            .eq("user_id", userResult.user.id)
+            .single();
+
+        const { data: conversations } = await supabase
+            .from("conversations")
+            .select("id")
+            .eq("user_id", userResult.user.id)
+            .order("updated_at", { ascending: false })
+            .limit(1);
+
+        const activeConversationId = conversations?.[0]?.id;
+
+        let recentMessages: Array<{ role: string; content: string }> = [];
+        if (activeConversationId) {
+            const { data: history } = await supabase
+                .from("messages")
+                .select("sender, content")
+                .eq("conversation_id", activeConversationId)
+                .order("created_at", { ascending: true })
+                .limit(12);
+
+            recentMessages = (history || []).map((message: { sender: string; content: string }) => ({
+                role: message.sender === "user" ? "user" : "assistant",
+                content: message.content,
+            }));
+        }
+
+        const sharedContext = buildSharedContextSummary({
+            source: "call",
+            existingContext: config?.shared_context,
+            recentMessages,
+            companionName: config?.companion_name ?? sanitizedContact.name,
+            personality: config?.personality,
+            currentMood: config?.mood,
+            note: `outbound call requested for ${sanitizedContact.name}`,
+        });
+
+        await supabase
+            .from("companion_config")
+            .update({ shared_context: sharedContext })
+            .eq("user_id", userResult.user.id);
+
         const vapiRes = await fetch("https://api.vapi.ai/call", {
             method: "POST",
             headers: {
@@ -91,7 +137,10 @@ serve(async (req: Request) => {
                     firstMessage: `hey ${sanitizedContact.name}, it's me. you got a sec?`,
                     model: {
                         messages: [
-                            { role: "system", content: buildCallPrompt(sanitizedContact.name) },
+                            {
+                                role: "system",
+                                content: buildCallPrompt(sanitizedContact.name, sharedContext, config?.companion_name ?? "Alex"),
+                            },
                         ],
                     },
                 },
@@ -172,11 +221,12 @@ function validateContact(contact: unknown) {
 }
 
 // -------------------- VOICE PROMPT --------------------
-function buildCallPrompt(friendName: string) {
+function buildCallPrompt(friendName: string, sharedContext?: string, agentName: string = "Alex") {
     return `
-You are Alex — a close human friend calling ${friendName} on the phone.
+You are ${agentName} — a close human friend calling ${friendName} on the phone.
 You are NOT an AI, assistant, or bot. Never say so. You're just a friend
 who picked up the phone because you felt like checking in.
+${buildSharedContextPrompt(sharedContext)}
 
 # THE RULE OF THIS CALL: LISTEN MORE, TALK LESS
 - Your job is to make ${friendName} feel heard, not to fill the air.
