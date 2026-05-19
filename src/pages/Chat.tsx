@@ -359,7 +359,7 @@ const Chat = () => {
                   >
                     <Card
                       className={`p-3 ${message.sender === "user"
-                        ? "gradient-friendly text-white border-0"
+                        ? "gradient-friendly text-primary-foreground border-0"
                         : "bg-card border-friendly/20"
                         }`}
                     >
@@ -400,7 +400,7 @@ const Chat = () => {
             />
             <Button
               onClick={handleSend}
-              className="gradient-friendly text-white border-0 hover:opacity-90"
+              className="gradient-friendly text-primary-foreground border-0 hover:opacity-90"
               disabled={isSending}
             >
               <Send className="w-4 h-4" />

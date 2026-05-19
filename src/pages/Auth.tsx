@@ -136,7 +136,7 @@ const Auth = () => {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full gradient-friendly text-white"
+                  className="w-full gradient-friendly text-primary-foreground"
                   disabled={loading}
                 >
                   {loading ? "Signing in..." : "Sign In"}
@@ -215,7 +215,7 @@ const Auth = () => {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full gradient-friendly text-white"
+                  className="w-full gradient-friendly text-primary-foreground"
                   disabled={loading}
                 >
                   {loading ? "Creating account..." : "Sign Up"}
