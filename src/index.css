@@ -121,7 +121,9 @@ All colors MUST be HSL.
     color: hsl(var(--secondary-foreground));
   }
 
-  .gradient-text {
+  .gradient-text,
+  .gradient-friendly-text,
+  .gradient-companion-text {
     color: hsl(var(--foreground));
     background: none;
     -webkit-text-fill-color: currentColor;
