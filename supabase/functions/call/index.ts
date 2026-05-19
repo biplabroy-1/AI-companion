@@ -87,8 +87,17 @@ serve(async (req: Request) => {
                     twilioPhoneNumber,
                 },
                 customer: sanitizedContact,
+                assistantOverrides: {
+                    firstMessage: `hey ${sanitizedContact.name}, it's me. you got a sec?`,
+                    model: {
+                        messages: [
+                            { role: "system", content: buildCallPrompt(sanitizedContact.name) },
+                        ],
+                    },
+                },
             }),
         });
+
 
         const providerBody = await safeJson(vapiRes);
 
